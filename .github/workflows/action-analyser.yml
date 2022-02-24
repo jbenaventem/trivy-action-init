@@ -41,6 +41,14 @@ jobs:
       contents: read
       security-events: write
 
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'javascript' ]
+        # CodeQL supports [ 'cpp', 'csharp', 'go', 'java', 'javascript', 'python' ]
+        # Learn more:
+        # https://docs.github.com/en/free-pro-team@latest/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning#changing-the-languages-that-are-analyzed
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -49,7 +57,7 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v1
         with:
-          languages: javascript
+          languages: ${{ matrix.language }}
           # If you wish to specify custom queries, you can do so here or in a config file.
           # By default, queries listed here will override any specified in a config file.
           # Prefix the list here with "+" to use these queries and those in the config file.
@@ -74,12 +82,38 @@ jobs:
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v1
         
+  trivy: 
+    name: Run Trivy
+    runs-on: ubuntu-latest
+    steps:
+     - name: Checkout repository
+       uses: actions/checkout@v2
+       
+     - name: Build an image from Dockerfile
+       run: |
+          docker build -t docker.io/jbenaventem/sonarqube-scan-action:${{ github.sha }} .
+     - name: Run Trivy vulnerability scanner as table format
+       uses: aquasecurity/trivy-action@master
+       with:
+          image-ref: 'docker.io/jbenaventem/sonarqube-scan-action:${{ github.sha }}'
+     - name: Run Trivy vulnerability scanner
+       uses: aquasecurity/trivy-action@master
+       with:
+          image-ref: 'docker.io/jbenaventem/sonarqube-scan-action:${{ github.sha }}'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+     - name: Upload Trivy scan results to GitHub Security tab
+       uses: github/codeql-action/upload-sarif@v1
+       with:
+          sarif_file: 'trivy-results.sarif'
+       
   app-inspector-scan:
     name: AppInspector Scan
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
     - uses: actions/setup-dotnet@v1
+
     - run: dotnet tool install -g Microsoft.CST.ApplicationInspector.CLI
     - run: appinspector analyze -s ./ -o AppInspectorResults.html -f html
     - uses: actions/upload-artifact@v2
