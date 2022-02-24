@@ -92,14 +92,10 @@ jobs:
      - name: Build an image from Dockerfile
        run: |
           docker build -t docker.io/jbenaventem/sonarqube-scan-action:${{ github.sha }} .
-     - name: Run Trivy vulnerability scanner as table format
-       uses: aquasecurity/trivy-action@master
-       with:
-          image-ref: 'docker.io/jbenaventem/sonarqube-scan-action:${{ github.sha }}'
      - name: Run Trivy vulnerability scanner
        uses: aquasecurity/trivy-action@master
        with:
-          image-ref: 'docker.io/jbenaventem/sonarqube-scan-action:${{ github.sha }}'
+          image-ref: 'docker.io/${{ github.repository }}:${{ github.sha }}'
           format: 'sarif'
           output: 'trivy-results.sarif'
      - name: Upload Trivy scan results to GitHub Security tab
